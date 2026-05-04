@@ -1641,6 +1641,7 @@ local function BuildSettings(parent, containerWidth)
         if settings.hideUntilReady == nil then settings.hideUntilReady = false end
         if settings.showRealmName == nil then settings.showRealmName = false end
         if settings.showRewardItemLevel == nil then settings.showRewardItemLevel = false end
+        if settings.showRewardProgress == nil then settings.showRewardProgress = false end
         if settings.showManaflux == nil then settings.showManaflux = false end
         if settings.showSummaryOnMouseover == nil then settings.showSummaryOnMouseover = false end
         if settings.leftClickAction == nil and settings.leftClickQuickView == true then settings.leftClickAction = "vault" end

@@ -31,6 +31,7 @@ local COL_RAID      = 62
 local COL_DUNGEON   = 62
 local COL_WORLD     = 62
 local COL_REWARD_ILVL = 72
+local COL_PROGRESS  = 86
 local COL_BOUNTY    = 46   -- Trovehunter's Bounty (done/not)
 local COL_VOIDCORE  = 58   -- Nebulous Voidcore (current/seasonMax)
 local COL_MANAFLUX  = 58   -- Dawnlight Manaflux (current held)
@@ -112,6 +113,7 @@ local function GetSettings()
             hideUntilMouseover = false,
             hideUntilReady = false,
             showRewardItemLevel = false,
+            showRewardProgress = false,
             showManaflux = false,
             showSummaryOnMouseover = false,
             leftClickAction = "pve",
@@ -129,6 +131,7 @@ local function GetSettings()
     if settings.hideUntilReady == nil then settings.hideUntilReady = false end
     if settings.showRealmName == nil then settings.showRealmName = false end
     if settings.showRewardItemLevel == nil then settings.showRewardItemLevel = false end
+    if settings.showRewardProgress == nil then settings.showRewardProgress = false end
     if settings.showManaflux == nil then settings.showManaflux = false end
     if settings.showSummaryOnMouseover == nil then settings.showSummaryOnMouseover = false end
     if settings.leftClickAction == nil and settings.leftClickQuickView == true then settings.leftClickAction = "vault" end
@@ -165,7 +168,7 @@ end
 local function GetEnabledCategoryDefs()
     local settings = GetSettings()
     local columns = settings.columns or {}
-    local width = settings.showRewardItemLevel and COL_REWARD_ILVL or nil
+    local width = (settings.showRewardItemLevel or settings.showRewardProgress) and COL_PROGRESS or nil
     local defs = {}
     if columns.raids ~= false then
         table.insert(defs, { key="raids", width=width or COL_RAID, label="Raid", icon=TRACK_ICONS.raids, tooltip="Raid" })
@@ -467,8 +470,14 @@ end
 local function SlotSymbols(slots, category)
     local settings = GetSettings()
     local parts = {}
+    local progress, nextThreshold, maxThreshold = 0, nil, 0
     for i = 1, 3 do
         local slot = slots[i]
+        progress = math.max(progress, tonumber(slot.progress) or 0)
+        maxThreshold = math.max(maxThreshold, tonumber(slot.threshold) or 0)
+        if not slot.complete and slot.threshold and slot.threshold > 0 and (not nextThreshold or slot.threshold < nextThreshold) then
+            nextThreshold = slot.threshold
+        end
         if slot.complete then
             if settings.showRewardItemLevel then
                 parts[i] = FormatRewardIlvl(slot.ilvl, category)
@@ -481,7 +490,14 @@ local function SlotSymbols(slots, category)
             parts[i] = CROSS
         end
     end
-    return table.concat(parts, " ")
+    local text = table.concat(parts, " ")
+    if settings.showRewardProgress then
+        local target = nextThreshold or maxThreshold
+        if target and target > 0 then
+            text = text .. " |cffaaaaaa(" .. math.min(progress, target) .. "/" .. target .. ")|r"
+        end
+    end
+    return text
 end
 
 local function BuildCharList()
@@ -1496,7 +1512,14 @@ local function BuildOptionsFrame()
             GetSettings().showRewardItemLevel = value
             RebuildTableFrame()
         end)
-    CreateMenuCheckbox(f, "Include Delver's Bounty", -104,
+    CreateMenuCheckbox(f, "Show Reward Progress", -104,
+        function() return GetSettings().showRewardProgress == true end,
+        function(value)
+            GetSettings().showRewardProgress = value
+            RebuildTableFrame()
+        end,
+        "Show current progress toward the next vault reward threshold.")
+    CreateMenuCheckbox(f, "Include Delver's Bounty", -130,
         function() return GetSettings().includeBountyOnly == true end,
         function(value)
             GetSettings().includeBountyOnly = value
@@ -1504,48 +1527,48 @@ local function BuildOptionsFrame()
         end,
         "Also show characters that have only looted a Delver's Bounty.")
     local columnLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    columnLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -142)
+    columnLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -168)
     columnLabel:SetText("Columns")
     columnLabel:SetTextColor(accent[1], accent[2], accent[3], 1)
     f.columnLabel = columnLabel
 
-    CreateMenuCheckbox(f, "Raid", -162,
+    CreateMenuCheckbox(f, "Raid", -188,
         function() return GetSettings().columns.raids ~= false end,
         function(value)
             GetSettings().columns.raids = value
             RebuildTableFrame()
         end)
-    CreateMenuCheckbox(f, "Dungeon", -188,
+    CreateMenuCheckbox(f, "Dungeon", -214,
         function() return GetSettings().columns.mythicPlus ~= false end,
         function(value)
             GetSettings().columns.mythicPlus = value
             RebuildTableFrame()
         end)
-    CreateMenuCheckbox(f, "World", -214,
+    CreateMenuCheckbox(f, "World", -240,
         function() return GetSettings().columns.world ~= false end,
         function(value)
             GetSettings().columns.world = value
             RebuildTableFrame()
         end)
-    CreateMenuCheckbox(f, "Trovehunter's Bounty", -240,
+    CreateMenuCheckbox(f, "Trovehunter's Bounty", -266,
         function() return GetSettings().columns.bounty ~= false end,
         function(value)
             GetSettings().columns.bounty = value
             RebuildTableFrame()
         end)
-    CreateMenuCheckbox(f, "Gilded Stashes", -266,
+    CreateMenuCheckbox(f, "Gilded Stashes", -292,
         function() return GetSettings().columns.gildedStash == true end,
         function(value)
             GetSettings().columns.gildedStash = value
             RebuildTableFrame()
         end)
-    CreateMenuCheckbox(f, "Nebulous Voidcore", -292,
+    CreateMenuCheckbox(f, "Nebulous Voidcore", -318,
         function() return GetSettings().columns.voidcore ~= false end,
         function(value)
             GetSettings().columns.voidcore = value
             RebuildTableFrame()
         end)
-    CreateMenuCheckbox(f, "Dawnlight Manaflux", -318,
+    CreateMenuCheckbox(f, "Dawnlight Manaflux", -344,
         function() return GetSettings().columns.manaflux == true end,
         function(value)
             GetSettings().columns.manaflux = value
